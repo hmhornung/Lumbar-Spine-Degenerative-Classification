@@ -1,0 +1,33 @@
+
+
+Data Preprocessing
+-------------------------------------------------------------------------------------
+Extraction from dicom:
+    Write a script for taking the pixel data from each dicom in a scan and
+    stacking into a 3d array, as well as recording neccesary metadata like 
+    pixel spacing, slice spacing, slice thickness, etc
+    Data should stay saved in a raw format of stacked slices of pixel data 
+    + metadata so that different preprocessing techniques can be used on the 
+    raw data.
+
+Data Preparation:
+
+    Isomorphic Resampling:
+    Determine what resolution the data should be resampled to (ie. 1mm x 1mm x 1mm)
+    Probably will need to experiment with different resolutions
+    Follow https://www.kaggle.com/code/gzuidhof/full-preprocessing-tutorial, and make
+    sure that credit / citation is given to author of the code
+    Also determine what the real-world dimensions of the data should be set to, ie
+    smaller sized data will be given zero padding to be used with larger data.
+    This will also help in deciding on resampling resolution.
+
+    Data Normalization:
+    Research data normalization techniques and best practices including mean subtraction,
+    zero-centering, and anything else that might help.
+
+    Data Augmentation:
+    Research and determine best data augmentation techniques to use, and consider
+    that the dataset is very small. Noise will probably be the most important
+    
+
+
