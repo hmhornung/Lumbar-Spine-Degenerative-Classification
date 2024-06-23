@@ -17,7 +17,8 @@ DEST_DIR = 'preprocessing/raw_data/'
 
 def resample(image, scan, new_spacing=[1,1,1]):
     '''
-    Resample scans for inference, with no coordinates available
+    Resample scans for inference, with no coordinates available\n
+    Based on the function from https://www.kaggle.com/code/gzuidhof/full-preprocessing-tutorial by GUIDO ZUIDHOF
     '''
     # Determine current pixel spacing
     spacing = np.array([scan[0].SpacingBetweenSlices] + list(scan[0].PixelSpacing), dtype=np.float32)
@@ -35,6 +36,7 @@ def resample(image, scan, new_spacing=[1,1,1]):
 def resample_with_coordinates(image, scan, coordinates_list: list, new_spacing=[1,1,1]):
     '''
     Resample scans for training, with coordinates available
+    Based on the function from https://www.kaggle.com/code/gzuidhof/full-preprocessing-tutorial by GUIDO ZUIDHOF
     '''
     # Determine current pixel spacing
     spacing = np.array([scan[0].SpacingBetweenSlices] + list(scan[0].PixelSpacing), dtype=np.float32)
@@ -51,7 +53,7 @@ def resample_with_coordinates(image, scan, coordinates_list: list, new_spacing=[
                        coord_set[1] * real_resize_factor[1],
                        coord_set[2] * real_resize_factor[2]] for coord_set in coordinates_list]
     
-    return image, new_spacing, new_coordintes
+    return image, new_coordintes, new_spacing
 
 def load_sample(path, study, series):
     slices = [pydicom.read_file(path, study, series, scan) for scan in os.listdir(os.path.join(path, study, series))]
@@ -123,7 +125,14 @@ def load_coord_data(path, series):
     #get mask for which conditions & levels are given for the series 1 / 0
     mask = [int(coord_dict[clo] != [0,0,0]) for clo in condition_level_order]
     
-    return coord_list, mask
+    return np.array(coord_list), np.array(mask)
+
+def sagittal_to_axial(image : np.ndarray, coordinates):
+    transformed_image = image.swapaxes(0,2)
+    for i in range(len(coordinates)):
+        temp = coordinates[i][0]
+        coordinates[i][0] = coordinates[i][2]
+        coordinates[i][2] = temp
 
 def load_label_data(path, study):
     '''
@@ -142,12 +151,64 @@ def load_label_data(path, study):
         one_hot_encoded_label_list[index][label] = 1
         index += 1
         
-    return one_hot_encoded_label_list
+    return np.array(one_hot_encoded_label_list)
 
+def get_series_orientation(path, series):
+    df = pd.read_csv(path)
+    description = df[df['series_id'] == series]['series_description'].item()
+    return description
+
+def crop_or_pad_image(image, target_dims = [400,400,400]):
+    '''
+    Crops and zero-pads dimensions larger / smaller than the target dimensions.\n
+    dim_diffs has left / right difference per dimension. Negative means cropped, Positive means zero-padded
+    '''
+    dim_diffs = np.array([[0,0],[0,0],[0,0]])
+    for i in range(3):
+        size = image.shape[i]
+        difference_left = (target_dims[i] - size) // 2
+        difference_right = (target_dims[i] - size) - difference_left
+        dim_diffs[i] = np.array([difference_left,difference_right])
+        print(difference_left)
+        print(difference_right)
+        
+    
+    cropped_image = np.zeros(target_dims)
+    
+    crop_start = [dim_diffs[i,0] if dim_diffs[i,0] > 0 else 0 for i in range(3)]
+    crop_end = [(target_dims[i] - dim_diffs[i,1]) if dim_diffs[i,1] > 0 else target_dims[i] for i in range(3)]
+    
+    image_start = [ 0 if dim_diffs[i,0] > 0 else abs(dim_diffs[i,0]) for i in range(3)]
+    image_end = [ image.shape[i] if dim_diffs[i,0] > 0 else image.shape[i] + dim_diffs[i,1]  for i in range(3)]
+    
+    target_slices = tuple(slice(start, end) for start, end in zip(crop_start, crop_end))
+    source_slices = tuple(slice(start, end) for start, end in zip(image_start, image_end))
+
+    
+    print(f'crop start: {crop_start[0]}')
+    print(f'crop end: {crop_end[0]}')
+    
+    print(f'image start: {image_start[0]}')
+    print(f'image end: {image_end[0]}')
+    
+    # cropped_image[slice(crop_start[0],crop_end[0]),slice(crop_start[1],crop_end[1]),slice(crop_start[2],crop_end[2])] = cropped_image[slice(image_start[0],image_end[0]),slice(image_start[1],image_end[1]),slice(image_start[2],image_end[2])]
+    
+    cropped_image[target_slices] = image[source_slices]
+    
+    return cropped_image, dim_diffs
+
+
+example = np.random.rand(345, 775, 111)
+print(example.max())
+example, diffs = crop_or_pad_image(example, [755,229,105])
+
+print(example[1,0,1])
+    
+    
 # import os
 # from preprocessing_util import load_coord_data
 
-path = 'data/train.csv'
+# path = 'data/train.csv'
 # 3846131846
 # 2901066339
 # 198404504
