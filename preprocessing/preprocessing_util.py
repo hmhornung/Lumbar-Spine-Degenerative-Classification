@@ -56,7 +56,7 @@ def resample_with_coordinates(image, scan, coordinates_list: list, new_spacing=[
     return image, new_coordintes, new_spacing
 
 def load_sample(path, study, series):
-    slices = [pydicom.read_file(path, study, series, scan) for scan in os.listdir(os.path.join(path, study, series))]
+    slices = [pydicom.read_file(os.path.join(path, study, series, scan)) for scan in os.listdir(os.path.join(path, study, series))]
     
     return slices
 
@@ -113,7 +113,7 @@ def load_coord_data(path, series):
     # 1) a list of 3-tuples of coordinates, corresponding to condition_level_order. [0,0,0] in the rest
     # 2) a mask corresponding to the present / missing predictions for the series 1 / 0
     
-    coord_dict = { f'{row[0]}-{row[1]}' : [row[2], row[3], row[4]] for row in filtered_df}
+    coord_dict = { f'{row[0]}_{row[1]}' : [row[2], row[3], row[4]] for row in filtered_df}
     
     # fill in missing coords with -1
     for clo in condition_level_order:
@@ -133,6 +133,8 @@ def sagittal_to_axial(image : np.ndarray, coordinates):
         temp = coordinates[i][0]
         coordinates[i][0] = coordinates[i][2]
         coordinates[i][2] = temp
+        
+    return transformed_image, coordinates
 
 def load_label_data(path, study):
     '''
@@ -140,7 +142,7 @@ def load_label_data(path, study):
     '''
     df = pd.read_csv(path)
     filtered_df = df[df['study_id'] == study]
-    label_list = [ str(filtered_df[clo.lower().replace(' ', '_').replace('/', '_')].item()) for clo in condition_level_order]
+    label_list = [ str(filtered_df[clo.lower().replace(' ', '_').replace('/', '_')].item()) if len(filtered_df[clo.lower().replace(' ', '_').replace('/', '_')]) > 0 else 'nan' for clo in condition_level_order]
     
     discrete_label_list = [ label_dict[label] for label in label_list ]
     
@@ -155,6 +157,7 @@ def load_label_data(path, study):
 
 def get_series_orientation(path, series):
     df = pd.read_csv(path)
+    print(df[df['series_id'] == series])
     description = df[df['series_id'] == series]['series_description'].item()
     return description
 
@@ -185,11 +188,8 @@ def crop_or_pad_image(image, target_dims = [400,400,400]):
     source_slices = tuple(slice(start, end) for start, end in zip(image_start, image_end))
 
     
-    print(f'crop start: {crop_start[0]}')
-    print(f'crop end: {crop_end[0]}')
-    
-    print(f'image start: {image_start[0]}')
-    print(f'image end: {image_end[0]}')
+    print(f'crop ranges:\nz:{crop_start[0]}-{crop_end[0]}\nz:{crop_start[1]}-{crop_end[1]}\ny:{crop_start[2]}-{crop_end[2]}')
+    print(f'crop ranges:\nz:{image_start[0]}-{image_end[0]}\nz:{image_start[1]}-{image_end[1]}\ny:{image_start[2]}-{image_end[2]}')
     
     # cropped_image[slice(crop_start[0],crop_end[0]),slice(crop_start[1],crop_end[1]),slice(crop_start[2],crop_end[2])] = cropped_image[slice(image_start[0],image_end[0]),slice(image_start[1],image_end[1]),slice(image_start[2],image_end[2])]
     
@@ -197,12 +197,28 @@ def crop_or_pad_image(image, target_dims = [400,400,400]):
     
     return cropped_image, dim_diffs
 
+def adjust_coordinates(coord_data, dim_adjustments, max_dims):
+    assert coord_data.shape[0] == 25
+    
+    adjusted_coords = [coords + dim_adjustments for coords in coord_data]
+    
+    #create mask for coordinates that were cropped out of bounds
+    mask = [int((coord > [0,0,0]).all() and (coord < max_dims).all()) for coord in adjusted_coords]
+    mask = np.array(mask)
+    
+    #apply mask to remove OOB coordinates
+    result = adjusted_coords * mask[:, np.newaxis]
+    
+    return result, mask
 
-example = np.random.rand(345, 775, 111)
-print(example.max())
-example, diffs = crop_or_pad_image(example, [755,229,105])
 
-print(example[1,0,1])
+
+#crop testing
+# example = np.random.rand(345, 775, 111)
+# print(example.max())
+# example, diffs = crop_or_pad_image(example, [755,229,105])
+
+# print(example[1,0,1])
     
     
 # import os
