@@ -157,7 +157,7 @@ def load_label_data(path, study):
 
 def get_series_orientation(path, series):
     df = pd.read_csv(path)
-    print(df[df['series_id'] == series])
+    # print(df[df['series_id'] == series])
     description = df[df['series_id'] == series]['series_description'].item()
     return description
 
@@ -172,8 +172,8 @@ def crop_or_pad_image(image, target_dims = [400,400,400]):
         difference_left = (target_dims[i] - size) // 2
         difference_right = (target_dims[i] - size) - difference_left
         dim_diffs[i] = np.array([difference_left,difference_right])
-        print(difference_left)
-        print(difference_right)
+        # print(difference_left)
+        # print(difference_right)
         
     
     cropped_image = np.zeros(target_dims)
@@ -188,8 +188,8 @@ def crop_or_pad_image(image, target_dims = [400,400,400]):
     source_slices = tuple(slice(start, end) for start, end in zip(image_start, image_end))
 
     
-    print(f'crop ranges:\nz:{crop_start[0]}-{crop_end[0]}\nz:{crop_start[1]}-{crop_end[1]}\ny:{crop_start[2]}-{crop_end[2]}')
-    print(f'crop ranges:\nz:{image_start[0]}-{image_end[0]}\nz:{image_start[1]}-{image_end[1]}\ny:{image_start[2]}-{image_end[2]}')
+    # print(f'crop ranges:\nz:{crop_start[0]}-{crop_end[0]}\nz:{crop_start[1]}-{crop_end[1]}\ny:{crop_start[2]}-{crop_end[2]}')
+    # print(f'crop ranges:\nz:{image_start[0]}-{image_end[0]}\nz:{image_start[1]}-{image_end[1]}\ny:{image_start[2]}-{image_end[2]}')
     
     # cropped_image[slice(crop_start[0],crop_end[0]),slice(crop_start[1],crop_end[1]),slice(crop_start[2],crop_end[2])] = cropped_image[slice(image_start[0],image_end[0]),slice(image_start[1],image_end[1]),slice(image_start[2],image_end[2])]
     
